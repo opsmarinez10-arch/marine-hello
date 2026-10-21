@@ -1,0 +1,14 @@
+[Unit]
+Description=Marine Agent web app (hello world)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=marine
+WorkingDirectory=/home/marine/marine-hello
+ExecStart=/home/marine/marine-hello/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
