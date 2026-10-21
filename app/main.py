@@ -1,17 +1,48 @@
 """Marine Agent — hello world untuk menguji alur deploy ke VM marine-agent."""
 
+import json
+import os
 import platform
+import shutil
 import socket
+import threading
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-APP_VERSION = "0.1.2"
+APP_VERSION = "0.2.0"
 TZ = ZoneInfo("Asia/Makassar")
 
+# Data hidup di LUAR folder repo, supaya deploy (git reset/pull) tidak pernah menyentuhnya.
+# Di VM diisi lewat EnvironmentFile service; default untuk dev lokal: ./.data (di-ignore Git).
+DATA_DIR = Path(os.environ.get("MARINE_DATA_DIR", Path(__file__).resolve().parent.parent / ".data"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+_VISITS_FILE = DATA_DIR / "visits.json"
+_lock = threading.Lock()
+
 app = FastAPI(title="Marine Agent", version=APP_VERSION)
+
+
+def _count_visit() -> int:
+    """Tambah dan simpan jumlah kunjungan. Bukti bahwa data bertahan melewati deploy."""
+    with _lock:
+        try:
+            n = json.loads(_VISITS_FILE.read_text())["visits"]
+        except (OSError, ValueError, KeyError):
+            n = 0
+        n += 1
+        tmp = _VISITS_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"visits": n}))
+        tmp.replace(_VISITS_FILE)  # tulis atomik: file tidak rusak kalau proses mati di tengah
+        return n
+
+
+def _disk_free() -> str:
+    usage = shutil.disk_usage(DATA_DIR)
+    return f"{usage.free / 1e9:.1f} GB bebas dari {usage.total / 1e9:.1f} GB"
 
 
 def _uptime() -> str:
@@ -35,6 +66,8 @@ def _status() -> dict:
         "python": platform.python_version(),
         "uptime": _uptime(),
         "time_wita": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S"),
+        "data_dir": str(DATA_DIR),
+        "disk": _disk_free(),
     }
 
 
@@ -47,6 +80,7 @@ def health() -> dict:
 @app.get("/", response_class=HTMLResponse)
 def home() -> str:
     s = _status()
+    visits = _count_visit()
     rows = "".join(
         f"<tr><th>{k}</th><td>{v}</td></tr>"
         for k, v in [
@@ -55,6 +89,9 @@ def home() -> str:
             ("Python", s["python"]),
             ("Uptime VM", s["uptime"]),
             ("Waktu (WITA)", s["time_wita"]),
+            ("Folder data", s["data_dir"]),
+            ("Disk", s["disk"]),
+            ("Kunjungan", visits),
         ]
     )
     return f"""<!doctype html>

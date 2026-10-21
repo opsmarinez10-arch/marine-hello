@@ -6,6 +6,9 @@ Wants=network-online.target
 [Service]
 User=marine
 WorkingDirectory=/home/marine/marine-hello
+# Konfigurasi dan secret (API key, dsb.) di luar repo. Tanda "-" = file boleh tidak ada.
+EnvironmentFile=-/home/marine/.config/marine-hello.env
+Environment=MARINE_DATA_DIR=/home/marine/marine-data/marine-hello
 ExecStart=/home/marine/marine-hello/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
 RestartSec=5

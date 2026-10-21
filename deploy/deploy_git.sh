@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploy lewat Git dari Pop!_OS:  ./deploy/deploy_git.sh
-# Syarat: perubahan sudah di-commit. Skrip ini push ke GitHub, lalu VM pull dan restart.
+# Syarat: perubahan sudah di-commit. Skrip ini push ke GitHub, lalu VM pull, sync dependensi, restart.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -13,10 +13,14 @@ fi
 echo "==> Push ke GitHub"
 git push origin main
 
-echo "==> VM: pull, update dependensi, restart"
-ssh -t marine 'cd ~/marine-hello \
+echo "==> VM: pull, sync dependensi (uv.lock), restart"
+ssh -t marine 'set -e; cd ~/marine-hello \
   && git pull --ff-only \
   && echo "    versi di VM: $(git log -1 --format="%h %s")" \
-  && .venv/bin/pip install -q -r requirements.txt \
+  && ~/.local/bin/uv sync --frozen \
+  && if ! cmp -s deploy/marine-hello.service /etc/systemd/system/marine-hello.service; then \
+       echo "    file service berubah, memasang ulang"; \
+       sudo cp deploy/marine-hello.service /etc/systemd/system/ && sudo systemctl daemon-reload; \
+     fi \
   && sudo systemctl restart marine-hello \
   && sleep 2 && curl -s http://127.0.0.1:8000/api/health && echo'

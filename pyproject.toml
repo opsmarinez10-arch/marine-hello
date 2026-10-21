@@ -1,0 +1,12 @@
+[project]
+name = "marine-hello"
+version = "0.2.0"
+description = "Marine Agent — app uji alur deploy ke VM marine-agent"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "uvicorn[standard]>=0.32,<0.33",
+]
+
+[tool.uv]
+package = false
