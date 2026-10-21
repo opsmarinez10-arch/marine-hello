@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.1.2"
 TZ = ZoneInfo("Asia/Makassar")
 
 app = FastAPI(title="Marine Agent", version=APP_VERSION)
